@@ -34,17 +34,14 @@ NGLScene::NGLScene()
 NGLScene::~NGLScene()
 {
   std::cout<<"Shutting down NGL, removing VAO's and Shaders\n";
-  delete m_light;
 }
 
-void NGLScene::resizeGL(int _w, int _h)
+void NGLScene::resizeGL(QResizeEvent *_event)
 {
-
-  // set the viewport for openGL
-  glViewport(0,0,_w,_h);
+  m_width=_event->size().width()*devicePixelRatio();
+  m_height=_event->size().height()*devicePixelRatio();
   // now set the camera size values as the screen size has changed
-  m_cam->setShape(45,(float)_w/_h,0.05,350);
- update();
+  m_cam.setShape(45.0f,(float)width()/height(),0.05f,350.0f);
 }
 
 
@@ -66,10 +63,10 @@ void NGLScene::initializeGL()
   ngl::Vec3 from(0,12,40);
   ngl::Vec3 to(0,0,0);
   ngl::Vec3 up(0,1,0);
-   m_cam= new ngl::Camera(from,to,up);
+   m_cam.set(from,to,up);
   // set the shape using FOV 45 Aspect Ratio based on Width and Height
   // The final two are near and far clipping planes of 0.5 and 10
-  m_cam->setShape(45,(float)720.0/576.0,0.05,350);
+  m_cam.setShape(45,(float)720.0/576.0,0.05,350);
   // now to load the shader and set the values
   // grab an instance of shader manager
   ngl::ShaderLib *shader=ngl::ShaderLib::instance();
@@ -92,9 +89,9 @@ void NGLScene::initializeGL()
   // the shader will use the currently active material and light0 so set them
   ngl::Material m(ngl::STDMAT::GOLD);
   m.loadToShader("material");
-  m_light = new ngl::Light(ngl::Vec3(2,2,2),ngl::Colour(1,1,1,1),ngl::Colour(1,1,1,1),ngl::LightModes::POINTLIGHT);
-  m_light->loadToShader("light");
-  shader->setShaderParam3f("viewerPos",m_cam->getEye().m_x,m_cam->getEye().m_y,m_cam->getEye().m_z);
+  ngl::Light light(ngl::Vec3(2,2,2),ngl::Colour(1,1,1,1),ngl::Colour(1,1,1,1),ngl::LightModes::POINTLIGHT);
+  light.loadToShader("light");
+  shader->setShaderParam3f("viewerPos",m_cam.getEye().m_x,m_cam.getEye().m_y,m_cam.getEye().m_z);
 
 
   createKleinBottle();
@@ -143,7 +140,7 @@ struct vertData
 };
 void NGLScene::createKleinBottle()
 {
-  m_vao =  ngl::VertexArrayObject::createVOA(GL_TRIANGLES);
+  m_vao.reset(ngl::VertexArrayObject::createVOA(GL_TRIANGLES));
   double umin = 0,umax = ngl::TWO_PI, vmin = 0, vmax = ngl::TWO_PI;
   int i,j,N;
   double u,v,dudv=0.01;
@@ -277,7 +274,7 @@ void NGLScene::paintGL()
 {
   // clear the screen and depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+  glViewport(0,0,m_width,m_height);
   // grab an instance of the shader manager
   ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   (*shader)["Phong"]->use();
@@ -298,24 +295,23 @@ void NGLScene::paintGL()
   m_mouseGlobalTX.m_m[3][2] = m_modelPos.m_z;
 
 
-    ngl::Mat4 MV;
-    ngl::Mat4 MVP;
-    ngl::Mat3 normalMatrix;
-    ngl::Mat4 M;
-    M=m_mouseGlobalTX;
-    MV=  M*m_cam->getViewMatrix();
-    MVP= M*m_cam->getVPMatrix();
-    normalMatrix=MV;
-    normalMatrix.inverse();
-    shader->setShaderParamFromMat4("MV",MV);
-    shader->setShaderParamFromMat4("MVP",MVP);
-    shader->setShaderParamFromMat3("normalMatrix",normalMatrix);
-    shader->setShaderParamFromMat4("M",M);    m_vao->bind();
-    m_vao->draw();
+  ngl::Mat4 MV;
+  ngl::Mat4 MVP;
+  ngl::Mat3 normalMatrix;
+  ngl::Mat4 M;
+  M=m_mouseGlobalTX;
+  MV=  M*m_cam.getViewMatrix();
+  MVP= M*m_cam.getVPMatrix();
+  normalMatrix=MV;
+  normalMatrix.inverse();
+  shader->setShaderParamFromMat4("MV",MV);
+  shader->setShaderParamFromMat4("MVP",MVP);
+  shader->setShaderParamFromMat3("normalMatrix",normalMatrix);
+  shader->setShaderParamFromMat4("M",M);    m_vao->bind();
+  m_vao->draw();
 
-    // now we are done so unbind
-    m_vao->unbind();
-
+  // now we are done so unbind
+  m_vao->unbind();
 }
 
 //----------------------------------------------------------------------------------------------------------------------

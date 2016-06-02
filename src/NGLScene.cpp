@@ -9,7 +9,7 @@
 #include <ngl/NGLInit.h>
 #include <ngl/VAOPrimitives.h>
 #include <ngl/ShaderLib.h>
-
+#include <ngl/VAOFactory.h>
 
 //----------------------------------------------------------------------------------------------------------------------
 /// @brief the increment for x/y translation with mouse movement
@@ -146,7 +146,6 @@ struct vertData
 };
 void NGLScene::createKleinBottle()
 {
-  m_vao.reset(ngl::VertexArrayObject::createVOA(GL_TRIANGLES));
   double umin = 0,umax = ngl::TWO_PI, vmin = 0, vmax = ngl::TWO_PI;
   int i,j,N;
   double u,v,dudv=0.01;
@@ -245,13 +244,16 @@ void NGLScene::createKleinBottle()
       data.push_back(d);
     }
   }
+  m_vao.reset(ngl::VAOFactory::createVAO("simpleVAO",GL_TRIANGLES) );
   m_vao->bind();
   unsigned int buffSize=data.size();
   // now we have our data add it to the VAO, we need to tell the VAO the following
   // how much (in bytes) data we are copying
   // a pointer to the first element of data (in this case the address of the first element of the
   // std::vector
-  m_vao->setData(buffSize*sizeof(vertData),data[0].u);
+  m_vao->setData(ngl::SimpleVAO::VertexData(buffSize*sizeof(vertData),data[0].u));
+
+//  m_vao->setData(buffSize*sizeof(vertData),data[0].u);
   // in this case we have packed our data in interleaved format as follows
   // u,v,nx,ny,nz,x,y,z
   // If you look at the shader we have the following attributes being used

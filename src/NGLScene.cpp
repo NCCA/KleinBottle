@@ -76,7 +76,7 @@ void NGLScene::initializeGL()
   m.loadToShader("material");
   ngl::Light light(ngl::Vec3(2,2,2),ngl::Colour(1,1,1,1),ngl::Colour(1,1,1,1),ngl::LightModes::POINTLIGHT);
   light.loadToShader("light");
-  shader->setShaderParam3f("viewerPos",m_cam.getEye().m_x,m_cam.getEye().m_y,m_cam.getEye().m_z);
+  shader->setUniform("viewerPos",m_cam.getEye().toVec3());
 
 
   createKleinBottle();
@@ -96,11 +96,11 @@ ngl::Vec3 NGLScene::eval(double u, double v)
   ngl::Vec3 p;
   double r;
 
-  r = 4 * (1 - cos(u) / 2);
+  r = 4.0 * (1.0 - cos(u) / 2.0);
   if (u < M_PI)
   {
-    p.m_x =  6 * cos(u) * (1 + sin(u)) + r * cos(u) * cos (v);
-    p.m_y = 16 * sin(u) + r * sin(u) * cos(v);
+    p.m_x =  6.0 * cos(u) * (1.0 + sin(u)) + r * cos(u) * cos (v);
+    p.m_y = 16.0 * sin(u) + r * sin(u) * cos(v);
   }
   else
   {
@@ -291,10 +291,10 @@ void NGLScene::paintGL()
   MVP= M*m_cam.getVPMatrix();
   normalMatrix=MV;
   normalMatrix.inverse();
-  shader->setShaderParamFromMat4("MV",MV);
-  shader->setShaderParamFromMat4("MVP",MVP);
-  shader->setShaderParamFromMat3("normalMatrix",normalMatrix);
-  shader->setShaderParamFromMat4("M",M);    m_vao->bind();
+  shader->setUniform("MV",MV);
+  shader->setUniform("MVP",MVP);
+  shader->setUniform("normalMatrix",normalMatrix);
+  shader->setUniform("M",M);    m_vao->bind();
   m_vao->draw();
 
   // now we are done so unbind

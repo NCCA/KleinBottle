@@ -225,14 +225,13 @@ void NGLScene::createKleinBottle()
   }
   m_vao.reset(ngl::VAOFactory::createVAO("simpleVAO",GL_TRIANGLES) );
   m_vao->bind();
-  unsigned int buffSize=data.size();
+  auto buffSize=data.size();
   // now we have our data add it to the VAO, we need to tell the VAO the following
   // how much (in bytes) data we are copying
   // a pointer to the first element of data (in this case the address of the first element of the
   // std::vector
   m_vao->setData(ngl::SimpleVAO::VertexData(buffSize*sizeof(vertData),data[0].u));
 
-//  m_vao->setData(buffSize*sizeof(vertData),data[0].u);
   // in this case we have packed our data in interleaved format as follows
   // u,v,nx,ny,nz,x,y,z
   // If you look at the shader we have the following attributes being used
@@ -287,16 +286,16 @@ void NGLScene::paintGL()
   ngl::Mat3 normalMatrix;
   ngl::Mat4 M;
   M=m_mouseGlobalTX;
-  MV=  M*m_cam.getViewMatrix();
-  MVP= M*m_cam.getVPMatrix();
+  MV=  m_cam.getViewMatrix()*M;
+  MVP= m_cam.getVPMatrix()*M;
   normalMatrix=MV;
-  normalMatrix.inverse();
+  normalMatrix.inverse().transpose();
+  shader->setUniform("M",M);
   shader->setUniform("MV",MV);
   shader->setUniform("MVP",MVP);
   shader->setUniform("normalMatrix",normalMatrix);
-  shader->setUniform("M",M);    m_vao->bind();
+  m_vao->bind();
   m_vao->draw();
-
   // now we are done so unbind
   m_vao->unbind();
 }

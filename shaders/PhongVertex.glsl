@@ -9,9 +9,9 @@ out vec3 backNormal;
 /// @brief the vertex passed in
 layout(location=0)in vec3 inVert;
 /// @brief the normal passed in
-layout(location=2)in vec3 inNormal;
+layout(location=1)in vec3 inNormal;
 /// @brief the in uv
-layout(location=1)in vec2 inUV;
+layout(location=2)in vec2 inUV;
 
 struct Materials
 {
@@ -24,11 +24,10 @@ struct Materials
 
 struct Lights
 {
-		vec4 position;
-		vec3 direction;
-		vec4 ambient;
-		vec4 diffuse;
-		vec4 specular;
+  vec4 position;
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
 };
 // our material
 uniform Materials material;

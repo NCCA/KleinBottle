@@ -2,10 +2,7 @@
 #include <QGuiApplication>
 
 #include "NGLScene.h"
-#include <ngl/Camera.h>
-#include <ngl/Light.h>
 #include <ngl/Transformation.h>
-#include <ngl/Material.h>
 #include <ngl/NGLInit.h>
 #include <ngl/VAOPrimitives.h>
 #include <ngl/ShaderLib.h>
@@ -25,7 +22,7 @@ NGLScene::~NGLScene()
 
 void NGLScene::resizeGL( int _w, int _h )
 {
-  m_cam.setShape( 45.0f, static_cast<float>( _w ) / _h, 0.05f, 350.0f );
+  m_project=ngl::perspective( 45.0f, static_cast<float>( _w ) / _h, 0.05f, 350.0f );
   m_win.width  = static_cast<int>( _w * devicePixelRatio() );
   m_win.height = static_cast<int>( _h * devicePixelRatio() );
 }
@@ -45,13 +42,13 @@ void NGLScene::initializeGL()
   // Now we will create a basic Camera from the graphics library
   // This is a static camera so it only needs to be set once
   // First create Values for the camera position
-  ngl::Vec3 from(0,12,40);
+  ngl::Vec3 from(0,12,50);
   ngl::Vec3 to(0,0,0);
   ngl::Vec3 up(0,1,0);
-   m_cam.set(from,to,up);
+  m_view=ngl::lookAt(from,to,up);
   // set the shape using FOV 45 Aspect Ratio based on Width and Height
   // The final two are near and far clipping planes of 0.5 and 10
-  m_cam.setShape(45,(float)720.0/576.0,0.05,350);
+  m_project=ngl::perspective(45.0f,720.0f/576.0f,0.05f,350.0f);
   // now to load the shader and set the values
   // grab an instance of shader manager
   ngl::ShaderLib *shader=ngl::ShaderLib::instance();
@@ -71,12 +68,20 @@ void NGLScene::initializeGL()
 
   shader->linkProgramObject("Phong");
   (*shader)["Phong"]->use();
-  // the shader will use the currently active material and light0 so set them
-  ngl::Material m(ngl::STDMAT::GOLD);
-  m.loadToShader("material");
-  ngl::Light light(ngl::Vec3(2,2,2),ngl::Colour(1,1,1,1),ngl::Colour(1,1,1,1),ngl::LightModes::POINTLIGHT);
-  light.loadToShader("light");
-  shader->setUniform("viewerPos",m_cam.getEye().toVec3());
+  shader->setUniform("viewerPos",from);
+  shader->setUniform("Normalize",0);
+  ngl::Vec4 lightPos(2.0f,2.0f,2.0f,1.0f);
+  ngl::Mat4 iv=m_view;
+  iv.inverse().transpose();
+  shader->setUniform("light.position",lightPos*iv);
+  shader->setUniform("light.ambient",0.1f,0.1f,0.1f,1.0f);
+  shader->setUniform("light.diffuse",1.0f,1.0f,1.0f,1.0f);
+  shader->setUniform("light.specular",0.8f,0.8f,0.8f,1.0f);
+  // gold like phong material
+  shader->setUniform("material.ambient",0.274725f,0.1995f,0.0745f,0.0f);
+  shader->setUniform("material.diffuse",0.75164f,0.60648f,0.22648f,0.0f);
+  shader->setUniform("material.specular",0.628281f,0.555802f,0.3666065f,0.0f);
+  shader->setUniform("material.shininess",51.2f);
 
 
   createKleinBottle();
@@ -99,29 +104,29 @@ ngl::Vec3 NGLScene::eval(double u, double v)
   r = 4.0 * (1.0 - cos(u) / 2.0);
   if (u < M_PI)
   {
-    p.m_x =  6.0 * cos(u) * (1.0 + sin(u)) + r * cos(u) * cos (v);
-    p.m_y = 16.0 * sin(u) + r * sin(u) * cos(v);
+    p.m_x =  static_cast<float>(6.0 * cos(u) * (1.0 + sin(u)) + r * cos(u) * cos (v));
+    p.m_y = static_cast<float>(16.0 * sin(u) + r * sin(u) * cos(v));
   }
   else
   {
-    p.m_x = 6 * cos(u) * (1 + sin(u)) + r * cos(v + M_PI);
-    p.m_y = 16 * sin(u);
+    p.m_x = static_cast<float>(6 * cos(u) * (1 + sin(u)) + r * cos(v + M_PI));
+    p.m_y = static_cast<float>(16 * sin(u));
   }
-  p.m_z = r * sin(v);
+  p.m_z = static_cast<float>(r * sin(v));
 
   return p;
 }
 
 struct vertData
 {
-  GLfloat u;
-  GLfloat v;
-  GLfloat nx;
-  GLfloat ny;
-  GLfloat nz;
   GLfloat x;
   GLfloat y;
   GLfloat z;
+  GLfloat nx;
+  GLfloat ny;
+  GLfloat nz;
+  GLfloat u;
+  GLfloat v;
 };
 void NGLScene::createKleinBottle()
 {
@@ -223,29 +228,23 @@ void NGLScene::createKleinBottle()
       data.push_back(d);
     }
   }
-  m_vao.reset(ngl::VAOFactory::createVAO("simpleVAO",GL_TRIANGLES) );
+  m_vao=ngl::VAOFactory::createVAO("simpleVAO",GL_TRIANGLES);
   m_vao->bind();
   auto buffSize=data.size();
   // now we have our data add it to the VAO, we need to tell the VAO the following
   // how much (in bytes) data we are copying
   // a pointer to the first element of data (in this case the address of the first element of the
   // std::vector
-  m_vao->setData(ngl::SimpleVAO::VertexData(buffSize*sizeof(vertData),data[0].u));
+  m_vao->setData(ngl::SimpleVAO::VertexData(buffSize*sizeof(vertData),data[0].x));
 
-  // in this case we have packed our data in interleaved format as follows
-  // u,v,nx,ny,nz,x,y,z
-  // If you look at the shader we have the following attributes being used
   // attribute vec3 inVert; attribute 0
-  // attribute vec2 inUV; attribute 1
-  // attribute vec3 inNormal; attribure 2
-  // so we need to set the vertexAttributePointer so the correct size and type as follows
-  // vertex is attribute 0 with x,y,z(3) parts of type GL_FLOAT, our complete packed data is
-  // sizeof(vertData) and the offset into the data structure for the first x component is 5 (u,v,nx,ny,nz)..x
-  m_vao->setVertexAttributePointer(0,3,GL_FLOAT,sizeof(vertData),5);
+  // attribute vec3 inNormal; attribure 1
+  // attribute vec2 inUV; attribute 2
+  m_vao->setVertexAttributePointer(0,3,GL_FLOAT,sizeof(vertData),0);
   // uv same as above but starts at 0 and is attrib 1 and only u,v so 2
-  m_vao->setVertexAttributePointer(1,2,GL_FLOAT,sizeof(vertData),0);
+  m_vao->setVertexAttributePointer(1,3,GL_FLOAT,sizeof(vertData),3);
   // normal same as vertex only starts at position 2 (u,v)-> nx
-  m_vao->setVertexAttributePointer(2,3,GL_FLOAT,sizeof(vertData),2);
+  m_vao->setVertexAttributePointer(2,2,GL_FLOAT,sizeof(vertData),6);
   // now we have set the vertex attributes we tell the VAO class how many indices to draw when
   // glDrawArrays is called, in this case we use buffSize (but if we wished less of the sphere to be drawn we could
   // specify less (in steps of 3))
@@ -286,8 +285,8 @@ void NGLScene::paintGL()
   ngl::Mat3 normalMatrix;
   ngl::Mat4 M;
   M=m_mouseGlobalTX;
-  MV=  m_cam.getViewMatrix()*M;
-  MVP= m_cam.getVPMatrix()*M;
+  MV=  m_view*M;
+  MVP= m_project*MV;
   normalMatrix=MV;
   normalMatrix.inverse().transpose();
   shader->setUniform("M",M);

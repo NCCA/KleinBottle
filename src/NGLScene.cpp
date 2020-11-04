@@ -31,8 +31,7 @@ void NGLScene::initializeGL()
 {
   // we must call this first before any other GL commands to load and link the
   // gl commands from the lib, if this is not done program will crash
-  ngl::NGLInit::instance();
-  std::cout<<glGetString(GL_VERSION)<<std::endl;
+  ngl::NGLInit::initialize();
   glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
   glClearColor(0.4f, 0.4f, 0.4f, 1.0f);			   // Grey Background
   // enable depth testing for drawing
@@ -49,44 +48,37 @@ void NGLScene::initializeGL()
   // set the shape using FOV 45 Aspect Ratio based on Width and Height
   // The final two are near and far clipping planes of 0.5 and 10
   m_project=ngl::perspective(45.0f,720.0f/576.0f,0.05f,350.0f);
-  // now to load the shader and set the values
-  // grab an instance of shader manager
-  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
 
-  shader->createShaderProgram("Phong");
+  ngl::ShaderLib::createShaderProgram("Phong");
 
-  shader->attachShader("SimpleVertex",ngl::ShaderType::VERTEX);
-  shader->attachShader("SimpleFragment",ngl::ShaderType::FRAGMENT);
-  shader->loadShaderSource("SimpleVertex","shaders/PhongVertex.glsl");
-  shader->loadShaderSource("SimpleFragment","shaders/PhongFragment.glsl");
+  ngl::ShaderLib::attachShader("SimpleVertex",ngl::ShaderType::VERTEX);
+  ngl::ShaderLib::attachShader("SimpleFragment",ngl::ShaderType::FRAGMENT);
+  ngl::ShaderLib::loadShaderSource("SimpleVertex","shaders/PhongVertex.glsl");
+  ngl::ShaderLib::loadShaderSource("SimpleFragment","shaders/PhongFragment.glsl");
 
-  shader->compileShader("SimpleVertex");
-  shader->compileShader("SimpleFragment");
-  shader->attachShaderToProgram("Phong","SimpleVertex");
-  shader->attachShaderToProgram("Phong","SimpleFragment");
+  ngl::ShaderLib::compileShader("SimpleVertex");
+  ngl::ShaderLib::compileShader("SimpleFragment");
+  ngl::ShaderLib::attachShaderToProgram("Phong","SimpleVertex");
+  ngl::ShaderLib::attachShaderToProgram("Phong","SimpleFragment");
 
 
-  shader->linkProgramObject("Phong");
-  (*shader)["Phong"]->use();
-  shader->setUniform("viewerPos",from);
-  shader->setUniform("Normalize",0);
+  ngl::ShaderLib::linkProgramObject("Phong");
+  ngl::ShaderLib::use("Phong");
+  ngl::ShaderLib::setUniform("viewerPos",from);
+  ngl::ShaderLib::setUniform("Normalize",0);
   ngl::Vec4 lightPos(2.0f,2.0f,2.0f,1.0f);
   ngl::Mat4 iv=m_view;
   iv.inverse().transpose();
-  shader->setUniform("light.position",lightPos*iv);
-  shader->setUniform("light.ambient",0.1f,0.1f,0.1f,1.0f);
-  shader->setUniform("light.diffuse",1.0f,1.0f,1.0f,1.0f);
-  shader->setUniform("light.specular",0.8f,0.8f,0.8f,1.0f);
+  ngl::ShaderLib::setUniform("light.position",lightPos*iv);
+  ngl::ShaderLib::setUniform("light.ambient",0.1f,0.1f,0.1f,1.0f);
+  ngl::ShaderLib::setUniform("light.diffuse",1.0f,1.0f,1.0f,1.0f);
+  ngl::ShaderLib::setUniform("light.specular",0.8f,0.8f,0.8f,1.0f);
   // gold like phong material
-  shader->setUniform("material.ambient",0.274725f,0.1995f,0.0745f,0.0f);
-  shader->setUniform("material.diffuse",0.75164f,0.60648f,0.22648f,0.0f);
-  shader->setUniform("material.specular",0.628281f,0.555802f,0.3666065f,0.0f);
-  shader->setUniform("material.shininess",51.2f);
-
-
+  ngl::ShaderLib::setUniform("material.ambient",0.274725f,0.1995f,0.0745f,0.0f);
+  ngl::ShaderLib::setUniform("material.diffuse",0.75164f,0.60648f,0.22648f,0.0f);
+  ngl::ShaderLib::setUniform("material.specular",0.628281f,0.555802f,0.3666065f,0.0f);
+  ngl::ShaderLib::setUniform("material.shininess",51.2f);
   createKleinBottle();
-
-
 }
 
 
@@ -96,23 +88,23 @@ void NGLScene::initializeGL()
 /// http://paulbourke.net/geometry/klein/
 
 
-ngl::Vec3 NGLScene::eval(double u, double v)
+ngl::Vec3 NGLScene::eval(float u, float v)
 {
   ngl::Vec3 p;
-  double r;
+  float r;
 
-  r = 4.0 * (1.0 - cos(u) / 2.0);
+  r = 4.0f * (1.0f - cosf(u) / 2.0f);
   if (u < M_PI)
   {
-    p.m_x =  static_cast<float>(6.0 * cos(u) * (1.0 + sin(u)) + r * cos(u) * cos (v));
-    p.m_y = static_cast<float>(16.0 * sin(u) + r * sin(u) * cos(v));
+    p.m_x = 6.0f * cosf(u) * (1.0f + sinf(u)) + r * cosf(u) * cosf(v);
+    p.m_y = 16.0f * sinf(u) + r * sinf(u) * cosf(v);
   }
   else
   {
-    p.m_x = static_cast<float>(6 * cos(u) * (1 + sin(u)) + r * cos(v + M_PI));
-    p.m_y = static_cast<float>(16 * sin(u));
+    p.m_x = 6.0f * cosf(u) * (1.0f + sinf(u)) + r * cosf(v + M_PI);
+    p.m_y = 16.0f * sinf(u);
   }
-  p.m_z = static_cast<float>(r * sin(v));
+  p.m_z = r * sinf(v);
 
   return p;
 }
@@ -238,7 +230,7 @@ void NGLScene::createKleinBottle()
   m_vao->setData(ngl::SimpleVAO::VertexData(buffSize*sizeof(vertData),data[0].x));
 
   // attribute vec3 inVert; attribute 0
-  // attribute vec3 inNormal; attribure 1
+  // attribute vec3 inNormal; attribute 1
   // attribute vec2 inUV; attribute 2
   m_vao->setVertexAttributePointer(0,3,GL_FLOAT,sizeof(vertData),0);
   // uv same as above but starts at 0 and is attrib 1 and only u,v so 2
@@ -260,9 +252,7 @@ void NGLScene::paintGL()
   // clear the screen and depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glViewport(0,0,m_win.width,m_win.height);
-  // grab an instance of the shader manager
-  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
-  (*shader)["Phong"]->use();
+  ngl::ShaderLib::use("Phong");
   // clear the screen and depth buffer
   ngl::Transformation trans;
   // Rotation based on the mouse position for our global
@@ -279,7 +269,6 @@ void NGLScene::paintGL()
   m_mouseGlobalTX.m_m[3][1] = m_modelPos.m_y;
   m_mouseGlobalTX.m_m[3][2] = m_modelPos.m_z;
 
-
   ngl::Mat4 MV;
   ngl::Mat4 MVP;
   ngl::Mat3 normalMatrix;
@@ -289,10 +278,10 @@ void NGLScene::paintGL()
   MVP= m_project*MV;
   normalMatrix=MV;
   normalMatrix.inverse().transpose();
-  shader->setUniform("M",M);
-  shader->setUniform("MV",MV);
-  shader->setUniform("MVP",MVP);
-  shader->setUniform("normalMatrix",normalMatrix);
+  ngl::ShaderLib::setUniform("M",M);
+  ngl::ShaderLib::setUniform("MV",MV);
+  ngl::ShaderLib::setUniform("MVP",MVP);
+  ngl::ShaderLib::setUniform("normalMatrix",normalMatrix);
   m_vao->bind();
   m_vao->draw();
   // now we are done so unbind

@@ -108,7 +108,7 @@ private:
 
      void createKleinBottle();
 
-     ngl::Vec3 eval(double u, double v);
+     ngl::Vec3 eval(float u, float v);
 
 };
 
